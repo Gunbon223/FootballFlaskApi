@@ -1,19 +1,14 @@
 from appdb import db
 
 
-class Team_Season(db.Model):
-    __tablename__ = 'team_season'
-    standing_id = db.Column(db.Integer, primary_key=True,  nullable=False,autoincrement=True)
-    season_id = db.Column(db.Integer, db.ForeignKey('season.id'), nullable=False)
-    team_id = db.Column(db.Integer, db.ForeignKey('team.id'), nullable=False)
-
-
 class Team_Coach(db.Model):
     __tablename__ = 'team_coach'
     id = db.Column(db.Integer, primary_key=True)
     team_id = db.Column(db.Integer, db.ForeignKey('team.id'), nullable=False)
     coach_id = db.Column(db.Integer, db.ForeignKey('coach.id'), nullable=False)
     season_id = db.Column(db.Integer, db.ForeignKey('season.id'), nullable=False)
+    start_date = db.Column(db.DateTime, nullable=False)
+    end_date = db.Column(db.DateTime, nullable=True)
 
 class Team(db.Model):
     __tablename__ = 'team'

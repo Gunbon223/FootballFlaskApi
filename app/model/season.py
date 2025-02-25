@@ -9,7 +9,6 @@ class Season(db.Model):
     end_date = db.Column(db.Date, nullable=False)
     description = db.Column(db.String(255), nullable=True)
     tournament_id = db.Column(db.Integer, db.ForeignKey('tournament.id'), nullable=False)
-    teams = db.relationship('Team', secondary='team_season', backref='seasons', lazy='dynamic')
 
     def to_dict(self):
         return {

@@ -9,15 +9,14 @@ from app.model.team import Team
 from app.model.coach import Coach
 from app.model.team import Team_Coach
 from app.model.player import Player
-from app.model.player import Player_Season
+from app.model.player import player_team_season
+from app.model.round import Round
 from app.model.match import Match
 from app.model.lineup import Lineup
 from app.model.goal import Goal
 from app.model.card import Card
 from app.model.transfer_history import Transfer_History
-from app.model.player_achievement import Player_Achievement
-from app.model.season_standings import Season_Standings
-from app.model.team import Team_Season
+from app.model.team_season_ranking import Team_Season_Ranking
 
 
 def create_app():
