@@ -30,6 +30,7 @@ team_json = {
 positions = ["GK", "CB", "LB", "RB", "CM", "CDM", "CAM", "LM", "RM", "LW", "RW", "ST"]
 countries = ["England", "Spain", "Germany", "Italy", "France"]
 
+
 def create_tournaments():
     tournaments = []
     tournament_names = ["Premier League", "La Liga", "Serie A", "Bundesliga", "Ligue 1"]
@@ -39,6 +40,7 @@ def create_tournaments():
         db.session.commit()
         tournaments.append(tournament)
     return tournaments
+
 
 def create_seasons(tournaments):
     seasons = []
@@ -57,6 +59,7 @@ def create_seasons(tournaments):
             seasons.append(season)
     return seasons
 
+
 def create_teams():
     teams = []
     for country, clubs in team_json.items():
@@ -66,6 +69,7 @@ def create_teams():
             db.session.commit()
             teams.append(team)
     return teams
+
 
 def create_coaches():
     coaches = []
@@ -108,7 +112,7 @@ def create_team_coaches():
     print(f"{len(teams)} team-coach assignments added!")
 
 
-def create_players(num=300):
+def create_players(num=1000):
     """ Create players. """
     for _ in range(num):
         player = Player(
@@ -122,87 +126,172 @@ def create_players(num=300):
     print(f"{num} players added!")
 
 
+
 def create_player_season_teams():
-    """ Assign players to teams for seasons. """
-    players = Player.query.all()
     teams = Team.query.all()
     seasons = Season.query.all()
 
-    for _ in range(len(players)):
-        player_team_season_r = player_team_season(
-            player_id=choice(players).id,
-            season_id=choice(seasons).id,
-            team_id=choice(teams).id,
-            goals=randint(0, 30),
-            yellow_cards=randint(0, 10),
-            red_cards=randint(0, 3)
-        )
-        db.session.add(player_team_season_r)
+    for season in seasons:
+        players = Player.query.all()
+        for team in teams:
+            selected_players = fake.random_elements(elements=players, length=25, unique=True)
+            for player in selected_players:
+                player_team_season_r = player_team_season(
+                    player_id=player.id,
+                    season_id=season.id,
+                    team_id=team.id,
+                    goals=randint(0, 30),
+                    yellow_cards=randint(0, 10),
+                    red_cards=randint(0, 3)
+                )
+                db.session.add(player_team_season_r)
     db.session.commit()
-    print(f"{len(players)} player-season-team records added!")
+    print('25 players per team per season added!')
 
 
 def create_rounds(num=15):
     """ Create rounds. """
     seasons = Season.query.all()
-    for _ in range(num):
-        round_instance = Round(
-            season_id=choice(seasons).id,
-            round_number=randint(1, 38),
-            round_date=fake.date_between(start_date="-5y", end_date="today"),
-            is_finished=bool(randint(0, 1))
-        )
-        db.session.add(round_instance)
+    for seasons in seasons:
+        for i in range(randint(5, num)):
+            round = Round(
+                round_number=i,
+                season_id=seasons.id,
+                round_date=fake.date_between(start_date='-2y', end_date='today'),
+                is_finished=fake.boolean(chance_of_getting_true=80)
+            )
+            db.session.add(round)
     db.session.commit()
     print(f"{num} rounds added!")
 
 
-def create_matches(num=150):
-    """ Create matches. """
-    seasons = Season.query.all()
-    teams = Team.query.all()
-    rounds = Round.query.all()
-    coaches = Coach.query.all()
+def create_matches():
+        matches = []
+        seasons = Season.query.all()
+        team_season = Team_Season_Ranking.query.all()
+        team_ss = [t for t in team_season if t.season_id in [s.id for s in seasons]]
+        team_coaches = Team_Coach.query.all()
+        rounds = Round.query.all()
 
-    for _ in range(num):
-        home_team, away_team = choice(teams), choice(teams)
-        while home_team.id == away_team.id:
-            away_team = choice(teams)
+        for season in seasons:
+            season_teams = [t for t in team_ss if t.season_id == season.id]
+            if not season_teams:
+                continue
+            season_rounds = [r for r in rounds if r.season_id == season.id]
+            for round in season_rounds:
+                for home_team in season_teams:
+                    away_team = fake.random_element(season_teams)
+                    while home_team == away_team:
+                        away_team = fake.random_element(season_teams)
+                    match = Match(
+                        season_id=season.id,
+                        home_team_id=home_team.team_id,
+                        away_team_id=away_team.team_id,
+                        match_date=fake.date_time(),
+                        home_score=fake.random_int(min=0, max=5),
+                        away_score=fake.random_int(min=0, max=5),
+                        home_coach_id=fake.random_element(team_coaches).coach_id,
+                        away_coach_id=fake.random_element(team_coaches).coach_id,
+                        round_id=round.id
+                    )
+                    db.session.add(match)
+                    db.session.commit()
+                    matches.append(match)
+        print(f"{len(matches)} matches added!")
 
-        match = Match(
-            season_id=choice(seasons).id,
-            home_team_id=home_team.id,
-            away_team_id=away_team.id,
-            match_date=fake.date_time_between(start_date="-5y", end_date=datetime.now()),
-            home_score=randint(0, 5),
-            home_coach_id=choice(coaches).id,
-            away_coach_id=choice(coaches).id,
-            round_id=choice(rounds).id
-        )
-        db.session.add(match)
-    db.session.commit()
-    print(f"{num} matches added!")
-
-
-def create_goals(num=50):
-    """ Create goals. """
+def create_lineups():
     matches = Match.query.all()
-    players = Player.query.all()
-    teams = Team.query.all()
+    for match in matches:
+        # Retrieve home team's players for this season
+        home_players = player_team_season.query.filter_by(
+            season_id=match.season_id,
+            team_id=match.home_team_id
+        ).all()
+        # Retrieve away team's players for this season
+        away_players = player_team_season.query.filter_by(
+            season_id=match.season_id,
+            team_id=match.away_team_id
+        ).all()
 
-    for _ in range(num):
-        goal = Goal(
-            match_id=choice(matches).id,
-            player_id=choice(players).id,
-            team_id=choice(teams).id,
-            goal_time=randint(1, 90)
-        )
-        db.session.add(goal)
+        # Pick 20 home players
+        chosen_home = fake.random_elements(elements=home_players, length=20, unique=True)
+        # Choose 11-13 of them to start
+        home_starters_count = randint(11, 13)
+        home_starters = set(fake.random_elements(chosen_home, length=home_starters_count, unique=True))
+
+        # Insert home lineups
+        for record in chosen_home:
+            lineup = Lineup(
+                match_id=match.id,
+                player_id=record.player_id,
+                team_id=record.team_id,
+                is_starting=(record in home_starters)
+            )
+            db.session.add(lineup)
+
+        # Pick 20 away players
+        chosen_away = fake.random_elements(elements=away_players, length=20, unique=True)
+        # Choose 11-13 of them to start
+        away_starters_count = randint(11, 13)
+        away_starters = set(fake.random_elements(chosen_away, length=away_starters_count, unique=True))
+
+        # Insert away lineups
+        for record in chosen_away:
+            lineup = Lineup(
+                match_id=match.id,
+                player_id=record.player_id,
+                team_id=record.team_id,
+                is_starting=(record in away_starters)
+            )
+            db.session.add(lineup)
+
     db.session.commit()
-    print(f"{num} goals added!")
+    print(f"{len(matches) * 20} lineups added!")
+
+def add_goals():
+    matches = Match.query.all()
+    for match in matches:
+        # Home team starting players
+        home_starting = Lineup.query.filter_by(
+            match_id=match.id,
+            team_id=match.home_team_id,
+            is_starting=True
+        ).all()
+
+        # Away team starting players
+        away_starting = Lineup.query.filter_by(
+            match_id=match.id,
+            team_id=match.away_team_id,
+            is_starting=True
+        ).all()
+
+        home_goals_count = match.home_score
+        for _ in range(home_goals_count):
+            scorer = choice(home_starting)
+            goal = Goal(
+                match_id=match.id,
+                player_id=scorer.player_id,
+                team_id=scorer.team_id,
+                goal_time=randint(1, 90)
+            )
+            db.session.add(goal)
+
+        away_goals_count = match.away_score
+        for _ in range(away_goals_count):
+            scorer = choice(away_starting)
+            goal = Goal(
+                match_id=match.id,
+                player_id=scorer.player_id,
+                team_id=scorer.team_id,
+                goal_time=randint(1, 90)
+            )
+            db.session.add(goal)
+
+    db.session.commit()
+    print(f"{sum([m.home_score + m.away_score for m in matches])} goals added!")
 
 
-def create_cards(num=40):
+def create_cards(num=240):
     """ Create yellow and red cards. """
     matches = Match.query.all()
     players = Player.query.all()
@@ -223,22 +312,8 @@ def create_cards(num=40):
     print(f"{num} cards added!")
 
 
-def create_lineups(num=50):
-    """ Create lineups for matches. """
-    matches = Match.query.all()
-    players = Player.query.all()
-    teams = Team.query.all()
 
-    for _ in range(num):
-        lineup = Lineup(
-            match_id=choice(matches).id,
-            player_id=choice(players).id,
-            team_id=choice(teams).id,
-            is_starting=bool(randint(0, 1))
-        )
-        db.session.add(lineup)
-    db.session.commit()
-    print(f"{num} lineups added!")
+
 
 def create_transfer_histories():
     """ Create transfer histories for players. """
@@ -259,88 +334,6 @@ def create_transfer_histories():
     db.session.commit()
     print(f"{len(players)} transfer histories added!")
 
-    def create_Team_Season_Ranking():
-        """ Generate rankings for each team in each season based on match results. """
-        seasons = Season.query.all()
-        teams = Team.query.all()
-
-        if not seasons or not teams:
-            print("No seasons or teams found in the database.")
-            return
-
-        for season in seasons:
-            rankings = []
-
-            for team in teams:
-                # Fetch matches where the team played
-                matches = Match.query.filter(
-                    (Match.season_id == season.id) &
-                    ((Match.home_team_id == team.id) | (Match.away_team_id == team.id))
-                ).all()
-
-                matches_played = len(matches)
-                wins, draws, losses = 0, 0, 0
-                goals_for, goals_against = 0, 0
-
-                for match in matches:
-                    if match.home_team_id == team.id:
-                        goals_for += match.home_score
-                        goals_against += match.away_score
-                        if match.home_score > match.away_score:
-                            wins += 1
-                        elif match.home_score < match.away_score:
-                            losses += 1
-                        else:
-                            draws += 1
-                    else:
-                        goals_for += match.away_score
-                        goals_against += match.home_score
-                        if match.away_score > match.home_score:
-                            wins += 1
-                        elif match.away_score < match.home_score:
-                            losses += 1
-                        else:
-                            draws += 1
-
-                goal_difference = goals_for - goals_against
-                points = wins * 3 + draws
-
-                rankings.append({
-                    "team_id": team.id,
-                    "season_id": season.id,
-                    "matches_played": matches_played,
-                    "wins": wins,
-                    "draws": draws,
-                    "losses": losses,
-                    "goals_for": goals_for,
-                    "goals_against": goals_against,
-                    "goal_difference": goal_difference,
-                    "points": points
-                })
-
-            # Sort teams based on points, then goal difference
-            rankings.sort(key=lambda x: (x["points"], x["goal_difference"]), reverse=True)
-
-            # Assign ranking positions
-            for rank, data in enumerate(rankings, start=1):
-                ranking_entry = Team_Season_Ranking(
-                    team_id=data["team_id"],
-                    season_id=data["season_id"],
-                    matches_played=data["matches_played"],
-                    wins=data["wins"],
-                    draws=data["draws"],
-                    losses=data["losses"],
-                    goals_for=data["goals_for"],
-                    goals_against=data["goals_against"],
-                    goal_difference=data["goal_difference"],
-                    points=data["points"],
-                    ranking=rank
-                )
-                db.session.add(ranking_entry)
-
-        db.session.commit()
-        print("Team season rankings have been calculated and saved!")
-
 
 def create_Team_Season_Ranking():
     """ Generate rankings for each team in each season based on match results. """
@@ -353,96 +346,104 @@ def create_Team_Season_Ranking():
 
     for season in seasons:
         rankings = []
-
-        for team in teams:
-            # Fetch matches where the team played
-            matches = Match.query.filter(
-                (Match.season_id == season.id) &
-                ((Match.home_team_id == team.id) | (Match.away_team_id == team.id))
-            ).all()
-
-            matches_played = len(matches)
-            wins, draws, losses = 0, 0, 0
-            goals_for, goals_against = 0, 0
-
-            for match in matches:
-                if match.home_team_id == team.id:
-                    goals_for += match.home_score
-                    goals_against += match.away_score
-                    if match.home_score > match.away_score:
-                        wins += 1
-                    elif match.home_score < match.away_score:
-                        losses += 1
-                    else:
-                        draws += 1
-                else:
-                    goals_for += match.away_score
-                    goals_against += match.home_score
-                    if match.away_score > match.home_score:
-                        wins += 1
-                    elif match.away_score < match.home_score:
-                        losses += 1
-                    else:
-                        draws += 1
-
-            goal_difference = goals_for - goals_against
-            points = wins * 3 + draws
-
-            rankings.append({
-                "team_id": team.id,
-                "season_id": season.id,
-                "matches_played": matches_played,
-                "wins": wins,
-                "draws": draws,
-                "losses": losses,
-                "goals_for": goals_for,
-                "goals_against": goals_against,
-                "goal_difference": goal_difference,
-                "points": points
-            })
-
-        # Sort teams based on points, then goal difference
-        rankings.sort(key=lambda x: (x["points"], x["goal_difference"]), reverse=True)
-
-        # Assign ranking positions
-        for rank, data in enumerate(rankings, start=1):
-            ranking_entry = Team_Season_Ranking(
-                team_id=data["team_id"],
-                season_id=data["season_id"],
-                matches_played=data["matches_played"],
-                wins=data["wins"],
-                draws=data["draws"],
-                losses=data["losses"],
-                goals_for=data["goals_for"],
-                goals_against=data["goals_against"],
-                goal_difference=data["goal_difference"],
-                points=data["points"],
-                ranking=rank
+        selected_teams = fake.random_elements(elements=teams, length=randint(15, 20), unique=True)
+        index = 0
+        for selected_team in selected_teams:
+            index += 1
+            rankings.append(selected_team)
+            ranking = Team_Season_Ranking(
+                team_id=selected_team.id,
+                season_id=season.id,
+                ranking=index,
+                points=0,
+                wins=0,
+                draws=0,
+                losses=0,
+                goals_for=0,
+                goals_against=0,
+                matches_played=0
             )
-            db.session.add(ranking_entry)
+            db.session.add(ranking)
+        db.session.commit()
+    print(f"{len(seasons)} seasons' rankings added!")
 
-    db.session.commit()
-    print("Team season rankings have been calculated and saved!")
 
+def update_team_season_rankings():
+            seasons = Season.query.all()
+            for season in seasons:
+                # Retrieve all existing rankings in this season and reset stats
+                rankings = Team_Season_Ranking.query.filter_by(season_id=season.id).all()
+                for r in rankings:
+                    r.points = 0
+                    r.wins = 0
+                    r.draws = 0
+                    r.losses = 0
+                    r.goals_for = 0
+                    r.goals_against = 0
+                    r.goal_difference = 0
+                    r.matches_played = 0
 
+                # Update stats from each match
+                matches = Match.query.filter_by(season_id=season.id).all()
+                for match in matches:
+                    home_rank = next((x for x in rankings if x.team_id == match.home_team_id), None)
+                    away_rank = next((x for x in rankings if x.team_id == match.away_team_id), None)
+                    if not home_rank or not away_rank:
+                        continue
+
+                    home_rank.matches_played += 1
+                    away_rank.matches_played += 1
+                    home_rank.goals_for += match.home_score
+                    home_rank.goals_against += match.away_score
+                    away_rank.goals_for += match.away_score
+                    away_rank.goals_against += match.home_score
+
+                    if match.home_score > match.away_score:
+                        home_rank.wins += 1
+                        home_rank.points += 3
+                        away_rank.losses += 1
+                    elif match.home_score < match.away_score:
+                        away_rank.wins += 1
+                        away_rank.points += 3
+                        home_rank.losses += 1
+                    else:
+                        home_rank.draws += 1
+                        away_rank.draws += 1
+                        home_rank.points += 1
+                        away_rank.points += 1
+
+                # Calculate goal difference
+                for r in rankings:
+                    r.goal_difference = r.goals_for - r.goals_against
+
+                # Recalculate the ranking based on points and goal difference
+                rankings.sort(key=lambda x: (x.points, x.goal_difference), reverse=True)
+                current_rank = 1
+                for r in rankings:
+                    r.ranking = current_rank
+                    current_rank += 1
+
+                db.session.commit()
+                print(f"Rankings updated for {season.name}!")
 
 def main():
     with app.app_context():
         db.create_all()
-        tournaments = create_tournaments()
-        seasons = create_seasons(tournaments)
-        teams = create_teams()
-        coaches = create_coaches()
-        create_player_season_teams()
-        create_team_coaches()
-        create_players()
-        create_rounds()
-        create_matches()
-        create_lineups()
-        create_goals()
-        create_cards()
-        create_transfer_histories()
-        create_Team_Season_Ranking()
+        # tournaments = create_tournaments()
+        # seasons = create_seasons(tournaments)
+        # create_rounds()
+        # teams = create_teams()
+        # coaches = create_coaches()
+        # create_players()
+        # create_Team_Season_Ranking()
+        # create_player_season_teams()
+        # create_team_coaches()
+        # create_matches()
+        # create_lineups()
+        # add_goals()
+        # create_cards()
+        # create_transfer_histories()
+        update_team_season_rankings()
 
 if __name__ == "__main__":
     main()
