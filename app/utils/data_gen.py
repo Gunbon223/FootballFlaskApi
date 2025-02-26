@@ -371,77 +371,116 @@ def create_Team_Season_Ranking():
 
 
 def update_team_season_rankings():
-            seasons = Season.query.all()
-            for season in seasons:
-                rankings = Team_Season_Ranking.query.filter_by(season_id=season.id).all()
-                for r in rankings:
-                    r.points = 0
-                    r.wins = 0
-                    r.draws = 0
-                    r.losses = 0
-                    r.goals_for = 0
-                    r.goals_against = 0
-                    r.goal_difference = 0
-                    r.matches_played = 0
+    seasons = Season.query.all()
+    for season in seasons:
+        rankings = Team_Season_Ranking.query.filter_by(season_id=season.id).all()
+        for r in rankings:
+            r.points = 0
+            r.wins = 0
+            r.draws = 0
+            r.losses = 0
+            r.goals_for = 0
+            r.goals_against = 0
+            r.goal_difference = 0
+            r.matches_played = 0
 
-                matches = Match.query.filter_by(season_id=season.id).all()
-                for match in matches:
-                    home_rank = next((x for x in rankings if x.team_id == match.home_team_id), None)
-                    away_rank = next((x for x in rankings if x.team_id == match.away_team_id), None)
-                    if not home_rank or not away_rank:
-                        continue
+        matches = Match.query.filter_by(season_id=season.id).all()
+        for match in matches:
+            home_rank = next((x for x in rankings if x.team_id == match.home_team_id), None)
+            away_rank = next((x for x in rankings if x.team_id == match.away_team_id), None)
+            if not home_rank or not away_rank:
+                continue
 
-                    home_rank.matches_played += 1
-                    away_rank.matches_played += 1
-                    home_rank.goals_for += match.home_score
-                    home_rank.goals_against += match.away_score
-                    away_rank.goals_for += match.away_score
-                    away_rank.goals_against += match.home_score
+            home_rank.matches_played += 1
+            away_rank.matches_played += 1
+            home_rank.goals_for += match.home_score
+            home_rank.goals_against += match.away_score
+            away_rank.goals_for += match.away_score
+            away_rank.goals_against += match.home_score
 
-                    if match.home_score > match.away_score:
-                        home_rank.wins += 1
-                        home_rank.points += 3
-                        away_rank.losses += 1
-                    elif match.home_score < match.away_score:
-                        away_rank.wins += 1
-                        away_rank.points += 3
-                        home_rank.losses += 1
-                    else:
-                        home_rank.draws += 1
-                        away_rank.draws += 1
-                        home_rank.points += 1
-                        away_rank.points += 1
+            if match.home_score > match.away_score:
+                home_rank.wins += 1
+                home_rank.points += 3
+                away_rank.losses += 1
+            elif match.home_score < match.away_score:
+                away_rank.wins += 1
+                away_rank.points += 3
+                home_rank.losses += 1
+            else:
+                home_rank.draws += 1
+                away_rank.draws += 1
+                home_rank.points += 1
+                away_rank.points += 1
 
-                for r in rankings:
-                    r.goal_difference = r.goals_for - r.goals_against
+        for r in rankings:
+            r.goal_difference = r.goals_for - r.goals_against
 
-                rankings.sort(key=lambda x: (x.points, x.goal_difference), reverse=True)
-                current_rank = 1
-                for r in rankings:
-                    r.ranking = current_rank
-                    current_rank += 1
+        rankings.sort(key=lambda x: (x.points, x.goal_difference), reverse=True)
+        current_rank = 1
+        for r in rankings:
+            r.ranking = current_rank
+            current_rank += 1
 
-                db.session.commit()
-                print(f"Rankings updated for {season.name}!")
+        db.session.commit()
+        print(f"Rankings updated for {season.name}!")
+
+
+def update_player_season_teams():
+    # Get all player seasons and create a lookup dictionary
+    player_seasons = player_team_season.query.all()
+    player_season_lookup = {}
+    for ps in player_seasons:
+        key = (ps.player_id, ps.season_id, ps.team_id)
+        player_season_lookup[key] = ps
+
+    # Reset statistics
+    for ps in player_seasons:
+        ps.goals = 0
+        ps.yellow_cards = 0
+        ps.red_cards = 0
+
+    # Update goals using modern SQLAlchemy syntax
+    goals = db.session.query(Goal, Match).join(Match).all()
+    for goal, match in goals:
+        key = (goal.player_id, match.season_id, goal.team_id)
+        player_season = player_season_lookup.get(key)
+        if player_season:
+            player_season.goals += 1
+
+    # Update cards
+    cards = Card.query.all()
+    for card in cards:
+        key = (card.player_id, card.season_id, card.team_id)
+        player_season = player_season_lookup.get(key)
+        if player_season:
+            if card.card_type == "Yellow":
+                player_season.yellow_cards += 1
+            elif card.card_type == "Red":
+                player_season.red_cards += 1
+
+    db.session.commit()
+    print("Player season statistics updated!")
+
 
 def main():
     with app.app_context():
-        db.create_all()
-        tournaments = create_tournaments()
-        seasons = create_seasons(tournaments)
-        create_rounds()
-        teams = create_teams()
-        coaches = create_coaches()
-        create_players()
-        create_Team_Season_Ranking()
-        create_player_season_teams()
-        create_team_coaches()
-        create_matches()
-        create_lineups()
-        add_goals()
-        create_cards()
-        create_transfer_histories()
-        update_team_season_rankings()
+        # db.create_all()
+        # tournaments = create_tournaments()
+        # seasons = create_seasons(tournaments)
+        # create_rounds()
+        # teams = create_teams()
+        # coaches = create_coaches()
+        # create_players()
+        # create_Team_Season_Ranking()
+        # create_player_season_teams()
+        # create_team_coaches()
+        # create_matches()
+        # create_lineups()
+        # add_goals()
+        # create_cards()
+        # create_transfer_histories()
 
+        # update_team_season_rankings()
+        update_player_season_teams()
 if __name__ == "__main__":
     main()
