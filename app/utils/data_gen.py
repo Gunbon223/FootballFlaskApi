@@ -87,7 +87,6 @@ def create_coaches():
 
 
 def create_team_coaches():
-    """ Assign coaches to teams for seasons. """
     teams = Team.query.all()
     coaches = Coach.query.all()
     seasons = Season.query.all()
@@ -133,8 +132,11 @@ def create_player_season_teams():
 
     for season in seasons:
         players = Player.query.all()
+        if len(players) < 25 * len(teams):
+            raise ValueError("Not enough players to assign 25 unique players per team.")
+
         for team in teams:
-            selected_players = fake.random_elements(elements=players, length=25, unique=True)
+            selected_players = set(fake.random_elements(elements=players, length=25, unique=True))
             for player in selected_players:
                 player_team_season_r = player_team_season(
                     player_id=player.id,
@@ -145,6 +147,7 @@ def create_player_season_teams():
                     red_cards=randint(0, 3)
                 )
                 db.session.add(player_team_season_r)
+                players.remove(player)
     db.session.commit()
     print('25 players per team per season added!')
 
@@ -292,7 +295,6 @@ def add_goals():
 
 
 def create_cards(num=240):
-    """ Create yellow and red cards. """
     matches = Match.query.all()
     players = Player.query.all()
     teams = Team.query.all()
@@ -371,7 +373,6 @@ def create_Team_Season_Ranking():
 def update_team_season_rankings():
             seasons = Season.query.all()
             for season in seasons:
-                # Retrieve all existing rankings in this season and reset stats
                 rankings = Team_Season_Ranking.query.filter_by(season_id=season.id).all()
                 for r in rankings:
                     r.points = 0
@@ -383,7 +384,6 @@ def update_team_season_rankings():
                     r.goal_difference = 0
                     r.matches_played = 0
 
-                # Update stats from each match
                 matches = Match.query.filter_by(season_id=season.id).all()
                 for match in matches:
                     home_rank = next((x for x in rankings if x.team_id == match.home_team_id), None)
@@ -412,11 +412,9 @@ def update_team_season_rankings():
                         home_rank.points += 1
                         away_rank.points += 1
 
-                # Calculate goal difference
                 for r in rankings:
                     r.goal_difference = r.goals_for - r.goals_against
 
-                # Recalculate the ranking based on points and goal difference
                 rankings.sort(key=lambda x: (x.points, x.goal_difference), reverse=True)
                 current_rank = 1
                 for r in rankings:
@@ -429,20 +427,20 @@ def update_team_season_rankings():
 def main():
     with app.app_context():
         db.create_all()
-        # tournaments = create_tournaments()
-        # seasons = create_seasons(tournaments)
-        # create_rounds()
-        # teams = create_teams()
-        # coaches = create_coaches()
-        # create_players()
-        # create_Team_Season_Ranking()
-        # create_player_season_teams()
-        # create_team_coaches()
-        # create_matches()
-        # create_lineups()
-        # add_goals()
-        # create_cards()
-        # create_transfer_histories()
+        tournaments = create_tournaments()
+        seasons = create_seasons(tournaments)
+        create_rounds()
+        teams = create_teams()
+        coaches = create_coaches()
+        create_players()
+        create_Team_Season_Ranking()
+        create_player_season_teams()
+        create_team_coaches()
+        create_matches()
+        create_lineups()
+        add_goals()
+        create_cards()
+        create_transfer_histories()
         update_team_season_rankings()
 
 if __name__ == "__main__":
