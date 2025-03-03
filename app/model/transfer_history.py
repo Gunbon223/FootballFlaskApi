@@ -8,4 +8,5 @@ class Transfer_History(db.Model):
     to_team_id = db.Column(db.Integer, db.ForeignKey('team.id'), nullable=False)
     transfer_date = db.Column(db.Date, nullable=False)
     season_id = db.Column(db.Integer, db.ForeignKey('season.id'), nullable=False)
-    detail = db.Column(db.Text)
+    transfer_fee = db.Column(db.Integer, nullable=False)
+    title = db.Column(db.String(255), nullable=False)

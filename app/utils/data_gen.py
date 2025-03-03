@@ -45,11 +45,11 @@ def create_tournaments():
 def create_seasons(tournaments):
     seasons = []
     for tournament in tournaments:
-        for _ in range(2):
-            start_date = fake.date_between(start_date='-2y', end_date='today')
-            end_date = start_date + timedelta(days=fake.random_int(min=150, max=290))
+        for _ in range(3):
+            start_date = fake.date_between(start_date='-10y', end_date='today')
+            end_date = start_date + timedelta(days=fake.random_int(min=100, max=120))
             season = Season(
-                name=f"{tournament.name} {start_date.year}/{end_date.year}",
+                name=f"{tournament.name} {start_date.month}/{start_date.year} - {end_date.month}/{end_date.year}",
                 start_date=start_date,
                 end_date=end_date,
                 tournament_id=tournament.id
@@ -68,7 +68,7 @@ def create_teams():
             db.session.add(team)
             db.session.commit()
             teams.append(team)
-    return teams
+    print(f"{len(teams)} teams added!")
 
 
 def create_coaches():
@@ -125,7 +125,6 @@ def create_players(num=1000):
     print(f"{num} players added!")
 
 
-
 def create_player_season_teams():
     teams = Team.query.all()
     seasons = Season.query.all()
@@ -152,55 +151,139 @@ def create_player_season_teams():
     print('25 players per team per season added!')
 
 
-def create_rounds(num=15):
-    """ Create rounds. """
+def create_rounds():
+    """Create rounds for each season with proper spacing and dates."""
     seasons = Season.query.all()
-    for seasons in seasons:
-        for i in range(randint(5, num)):
+    rounds_created = 0
+
+    for season in seasons:
+        # Get teams participating in this season
+        teams_in_season = Team_Season_Ranking.query.filter_by(season_id=season.id).all()
+        teams_count = len(teams_in_season)
+
+        if teams_count < 2:
+            print(f"Skip creating rounds for {season.name}: not enough teams")
+            continue
+
+        # For a complete league season where each team plays all others twice
+        required_rounds = (teams_count - 1) * 2
+
+        # Calculate time between rounds (typically one week in real leagues)
+        season_duration = (season.end_date - season.start_date).days
+        days_between_rounds = min(7, max(3, season_duration // (required_rounds + 1)))
+
+        for i in range(required_rounds):
+            round_date = season.start_date + timedelta(days=(i * days_between_rounds))
+
+            if round_date > season.end_date:
+                round_date = season.end_date - timedelta(days=(required_rounds - i))
+
+            # Convert date to datetime before comparison
+            is_finished = datetime.combine(round_date, time()) < datetime.now()
+
             round = Round(
-                round_number=i,
-                season_id=seasons.id,
-                round_date=fake.date_between(start_date='-2y', end_date='today'),
-                is_finished=fake.boolean(chance_of_getting_true=80)
+                round_number=i + 1,
+                season_id=season.id,
+                round_date=round_date,
+                is_finished=is_finished
             )
             db.session.add(round)
+            rounds_created += 1
+
     db.session.commit()
-    print(f"{num} rounds added!")
+    print(f"{rounds_created} rounds created across all seasons!")
 
 
 def create_matches():
-        matches = []
-        seasons = Season.query.all()
-        team_season = Team_Season_Ranking.query.all()
-        team_ss = [t for t in team_season if t.season_id in [s.id for s in seasons]]
-        team_coaches = Team_Coach.query.all()
-        rounds = Round.query.all()
+    from datetime import datetime, date, time, timedelta
 
-        for season in seasons:
-            season_teams = [t for t in team_ss if t.season_id == season.id]
-            if not season_teams:
-                continue
-            season_rounds = [r for r in rounds if r.season_id == season.id]
-            for round in season_rounds:
-                for home_team in season_teams:
-                    away_team = fake.random_element(season_teams)
-                    while home_team == away_team:
-                        away_team = fake.random_element(season_teams)
-                    match = Match(
-                        season_id=season.id,
-                        home_team_id=home_team.team_id,
-                        away_team_id=away_team.team_id,
-                        match_date=fake.date_time(),
-                        home_score=fake.random_int(min=0, max=5),
-                        away_score=fake.random_int(min=0, max=5),
-                        home_coach_id=fake.random_element(team_coaches).coach_id,
-                        away_coach_id=fake.random_element(team_coaches).coach_id,
-                        round_id=round.id
-                    )
-                    db.session.add(match)
-                    db.session.commit()
-                    matches.append(match)
-        print(f"{len(matches)} matches added!")
+    matches = []
+    seasons = Season.query.all()
+    team_season = Team_Season_Ranking.query.all()
+
+    for season in seasons:
+        season_teams = [t for t in team_season if t.season_id == season.id]
+        if len(season_teams) < 2:
+            continue
+
+        season_rounds = Round.query.filter_by(season_id=season.id).all()
+        teams_count = len(season_teams)
+        required_rounds = (teams_count - 1) * 2
+
+        if len(season_rounds) < required_rounds:
+            existing_count = len(season_rounds)
+            for i in range(existing_count, required_rounds):
+                round_date = season.start_date + timedelta(days=(i * 7))
+                is_finished = datetime.combine(round_date, time()) < datetime.now()
+                new_round = Round(
+                    round_number=i + 1,
+                    season_id=season.id,
+                    round_date=round_date,
+                    is_finished=is_finished
+                )
+                db.session.add(new_round)
+            db.session.commit()
+            season_rounds = Round.query.filter_by(season_id=season.id).all()[:required_rounds]
+
+        first_half_rounds = season_rounds[:teams_count - 1]
+        for round_idx, current_round in enumerate(first_half_rounds):
+            team_indices = list(range(teams_count))
+            for i in range(teams_count // 2):
+                home_idx = 0 if i == 0 else team_indices[i]
+                away_idx = team_indices[teams_count - 1 - i]
+
+                home_team = season_teams[home_idx]
+                away_team = season_teams[away_idx]
+
+                round_date = current_round.round_date
+                if isinstance(round_date, date) and not isinstance(round_date, datetime):
+                    round_date = datetime.combine(round_date, time())
+
+                match_date = round_date + timedelta(hours=randint(12, 20))
+                match = Match(
+                    season_id=season.id,
+                    home_team_id=home_team.team_id,
+                    away_team_id=away_team.team_id,
+                    match_start_date=match_date,
+                    match_end_date=match_date + timedelta(hours=2),
+                    home_score=randint(0, 5),
+                    away_score=randint(0, 5),
+                    referee=fake.name(),
+                    round_id=current_round.id
+                )
+                db.session.add(match)
+                matches.append(match)
+
+            team_indices = [team_indices[0]] + [team_indices[-1]] + team_indices[1:-1]
+
+        second_half_rounds = season_rounds[teams_count - 1:required_rounds]
+        first_half_matches = [m for m in matches if m.season_id == season.id]
+
+        for idx, current_round in enumerate(second_half_rounds):
+            for match in first_half_matches[idx * (teams_count // 2):(idx + 1) * (teams_count // 2)]:
+                round_date = current_round.round_date
+                if isinstance(round_date, date) and not isinstance(round_date, datetime):
+                    round_date = datetime.combine(round_date, time())
+
+                match_date = round_date + timedelta(hours=randint(12, 20))
+                reverse_match = Match(
+                    season_id=season.id,
+                    home_team_id=match.away_team_id,
+                    away_team_id=match.home_team_id,
+                    match_start_date=match_date,
+                    match_end_date=match_date + timedelta(hours=2),
+                    home_score=randint(0, 5),
+                    away_score=randint(0, 5),
+                    referee=fake.name(),
+                    round_id=current_round.id
+                )
+                db.session.add(reverse_match)
+                matches.append(reverse_match)
+
+        db.session.commit()
+
+    print(f"{len(matches)} matches added!")
+
 
 def create_lineups():
     matches = Match.query.all()
@@ -219,16 +302,29 @@ def create_lineups():
         # Pick 20 home players
         chosen_home = fake.random_elements(elements=home_players, length=20, unique=True)
         # Choose 11-13 of them to start
-        home_starters_count = randint(11, 13)
+        home_starters_count = randint(11, 15)
         home_starters = set(fake.random_elements(chosen_home, length=home_starters_count, unique=True))
 
         # Insert home lineups
         for record in chosen_home:
+            time_in = None
+            if fake.random_int(min=1, max=100) > 95:
+                time_in = randint(1, 75)
+            time_out = None
+            if 50 < fake.random_int(min=1, max=100) < 55:
+                if time_in:
+                    time_out = time_in + randint(1, 90 - time_in)
+                    if time_out > 90:
+                        time_out = 90 - randint(0, 15)
+                else:
+                    time_out = randint(45, 90)
             lineup = Lineup(
                 match_id=match.id,
                 player_id=record.player_id,
                 team_id=record.team_id,
-                is_starting=(record in home_starters)
+                is_starting=(record in home_starters),
+                time_in=time_in,
+                time_out=time_out if time_in else None
             )
             db.session.add(lineup)
 
@@ -238,18 +334,32 @@ def create_lineups():
         away_starters_count = randint(11, 13)
         away_starters = set(fake.random_elements(chosen_away, length=away_starters_count, unique=True))
 
-        # Insert away lineups
+        # Insert away lineups - FIX: Use away_starters instead of home_starters
         for record in chosen_away:
+            time_in = None
+            if fake.random_int(min=1, max=100) > 95:
+                time_in = randint(1, 75)
+            time_out = None
+            if 50 < fake.random_int(min=1, max=100) < 55:
+                if time_in:
+                    time_out = time_in + randint(1, 90 - time_in)
+                    if time_out > 90:
+                        time_out = 90 - randint(0, 15)
+                else:
+                    time_out = randint(45, 90)
             lineup = Lineup(
                 match_id=match.id,
                 player_id=record.player_id,
                 team_id=record.team_id,
-                is_starting=(record in away_starters)
+                is_starting=(record in away_starters),  # Fixed: was using home_starters
+                time_in=time_in,
+                time_out=time_out if time_in else None
             )
             db.session.add(lineup)
 
     db.session.commit()
     print(f"{len(matches) * 20} lineups added!")
+
 
 def add_goals():
     matches = Match.query.all()
@@ -267,6 +377,24 @@ def add_goals():
             team_id=match.away_team_id,
             is_starting=True
         ).all()
+
+        # Get all players if no starters are found
+        if not home_starting:
+            home_starting = Lineup.query.filter_by(
+                match_id=match.id,
+                team_id=match.home_team_id
+            ).all()
+
+        if not away_starting:
+            away_starting = Lineup.query.filter_by(
+                match_id=match.id,
+                team_id=match.away_team_id
+            ).all()
+
+        # Skip if still no players found
+        if not home_starting or not away_starting:
+            print(f"Skipping goals for match {match.id}: missing players")
+            continue
 
         home_goals_count = match.home_score
         for _ in range(home_goals_count):
@@ -314,9 +442,6 @@ def create_cards(num=240):
     print(f"{num} cards added!")
 
 
-
-
-
 def create_transfer_histories():
     """ Create transfer histories for players. """
     players = Player.query.all()
@@ -330,7 +455,8 @@ def create_transfer_histories():
             to_team_id=choice(teams).id,
             season_id=choice(seasons).id,
             transfer_date=fake.date_between(start_date="-5y", end_date="today"),
-            # transfer_fee=randint(100000, 10000000)
+            title=fake.sentence(),
+            transfer_fee=randint(100000, 10000000)
         )
         db.session.add(transfer)
     db.session.commit()
@@ -467,11 +593,12 @@ def main():
         db.create_all()
         tournaments = create_tournaments()
         seasons = create_seasons(tournaments)
-        create_rounds()
         teams = create_teams()
+        create_Team_Season_Ranking()
+        create_rounds()
         coaches = create_coaches()
         create_players()
-        create_Team_Season_Ranking()
+        create_players()
         create_player_season_teams()
         create_team_coaches()
         create_matches()
@@ -482,5 +609,8 @@ def main():
 
         update_team_season_rankings()
         update_player_season_teams()
+        print("Data completed!")
+
+
 if __name__ == "__main__":
     main()
