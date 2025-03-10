@@ -12,8 +12,5 @@ class Season(db.Model):
 
     def to_dict(self):
         return {
-            "id": self.id,
-            "name": self.name,
-            "start_date": self.start_date,
-            "end_date": self.end_date,
+            c.name: getattr(self, c.name) for c in self.__table__.columns
         }

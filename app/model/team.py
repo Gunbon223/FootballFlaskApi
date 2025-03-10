@@ -18,7 +18,5 @@ class Team(db.Model):
 
     def to_dict(self):
         return {
-            "id": self.id,
-            "name": self.name,
-            "country": self.country,
+            c.name: getattr(self, c.name) for c in self.__table__.columns
         }

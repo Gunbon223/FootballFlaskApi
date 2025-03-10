@@ -1,22 +1,18 @@
+import logging
+
 from flask import Flask
+
+from app.utils.commands import register_commands
 from appdb import db
 import urllib
 
 # Import all models
-from app.model.tournament import Tournament
-from app.model.season import Season
-from app.model.team import Team
-from app.model.coach import Coach
-from app.model.team import Team_Coach
-from app.model.player import Player
-from app.model.player import player_team_season
-from app.model.round import Round
-from app.model.match import Match
-from app.model.lineup import Lineup
-from app.model.goal import Goal
-from app.model.card import Card
-from app.model.transfer_history import Transfer_History
-from app.model.team_season_ranking import Team_Season_Ranking
+from app.service.redis_service import RedisService
+
+# Import all routes
+from app.route.team_route import team_route_bp
+from app.route.season_route import season_route_bp
+from app.route.tournament_route import tournament_route_bp
 
 
 def create_app():
@@ -27,7 +23,30 @@ def create_app():
 
     db.init_app(app)
 
+
+    # Configure logging
+    handler = logging.StreamHandler()
+    handler.setLevel(logging.INFO)
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    handler.setFormatter(formatter)
+    app.logger.addHandler(handler)
+    app.logger.setLevel(logging.INFO)
+
+
+    # Initialize Redis connection
     with app.app_context():
+        redis_service = RedisService.get_instance()
+        redis_service.connect()
         db.create_all()
 
+    app.register_blueprint(team_route_bp)
+    app.register_blueprint(season_route_bp)
+    app.register_blueprint(tournament_route_bp)
+
+    register_commands(app)
+
     return app
+
+
