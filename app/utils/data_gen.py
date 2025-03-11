@@ -1,3 +1,9 @@
+import sys
+import os
+# Add the root directory to Python's path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+
+# Continue with your existing imports
 import faker
 from faker import Faker
 from datetime import datetime, timedelta, time

@@ -8,6 +8,7 @@ import urllib
 
 # Import all models
 from app.service.redis_service import RedisService
+from app.model.coach import Coach
 
 # Import all routes
 from app.route.team_route import team_route_bp
@@ -19,8 +20,8 @@ def create_app():
     app = Flask(__name__)
     params = urllib.parse.quote_plus(
         'DRIVER={ODBC Driver 17 for SQL Server};SERVER=GBLAP;DATABASE=footballmng;UID=sa;PWD=123;')
-    app.config['SQLALCHEMY_DATABASE_URI'] = "mssql+pyodbc:///?odbc_connect=%s" % params
-
+    # Replace the current database configuration with:
+    app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///football.db"
     db.init_app(app)
 
 

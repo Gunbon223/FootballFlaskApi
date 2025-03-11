@@ -1,0 +1,17 @@
+### Get all teams
+GET http://localhost:5000/teams
+
+### Get specific team
+GET http://localhost:5000/teams/1
+
+### Create team
+POST http://localhost:5000/teams
+Content-Type: application/json
+
+{
+  "name": "Test Team",
+  "country": "Argentina"
+}
+
+### Get team ranking
+GET http://localhost:5000/teams/1/ranking?season_id=1
