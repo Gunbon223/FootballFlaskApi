@@ -99,7 +99,7 @@ class TournamentRepository(BaseRepository):
         start = (page - 1) * per_page
         end = start + per_page - 1
 
-        if sort_order == "asc":
+        if sort_order == "desc":
             recent_ids = self.redis_service.get_from_sorted_set(sorted_key, start, end, desc=True)
         else:
             recent_ids = self.redis_service.get_from_sorted_set(sorted_key, start, end, desc=False)

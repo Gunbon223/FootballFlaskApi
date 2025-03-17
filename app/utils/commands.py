@@ -37,7 +37,6 @@ def sync_to_redis_command():
         (Team_Coach, 'team_coach'),
         (player_team_season, 'player_team_season')
 
-        # Add other models as needed
     ]
 
     total = sync_service.sync_all_models(models_to_sync)

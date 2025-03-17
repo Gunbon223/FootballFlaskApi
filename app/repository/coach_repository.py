@@ -64,52 +64,79 @@ class CoachRepository(BaseRepository):
             current_app.logger.error(f"Error deleting coach: {str(e)}")
             return False
 
-    # In TeamCoachRepository:
-    def get_coaches_team(self, team_id):
-        """Get all team_coach records for a specific team"""
+    def get_coach_teams(self, coach_id, sort_order="desc", page=1, per_page=5):
+        """Get team_coach records for a specific coach with pagination and sorting"""
         try:
-            # Get team_coach IDs for this team
-            team_coaches_key = f"team:{team_id}:team_coaches"
-            coach_ids = self.redis_service.get(team_coaches_key)
+            # Use sorted set key
+            sorted_key = f"coach:{coach_id}:team_coaches_sorted"
+            total = self.redis_service.get_sorted_set_length(sorted_key)
 
-            if coach_ids is None:
-                # If relationship data not in Redis, load from SQL
-                self._sync_team_coaches()
-                coach_ids = self.redis_service.get(team_coaches_key) or []
+            if not total:
+                total = self.redis_service.get_sorted_set_length(sorted_key)
+                if not total:
+                    return [], 0
+
+            # Calculate pagination indices
+            start = (page - 1) * per_page
+            end = start + per_page - 1
+
+            # Get IDs from sorted set
+            is_desc = sort_order.lower() == "desc"
+            tc_ids = self.redis_service.get_from_sorted_set(
+                sorted_key, start, end, desc=is_desc
+            )
 
             # Get team_coach data
             team_coaches = []
-            for tc_id in coach_ids:
-                tc_data = self.redis_service.get(f"team_coach:{tc_id}")
+            for tc_id in tc_ids:
+                tc_data = self.redis_service.get(f"team_coach:{int(tc_id)}")
                 if tc_data:
-                    team_coaches.append(self._deserialize_model(tc_data))
+                    team_coaches.append(tc_data)
 
-            return team_coaches
+            return team_coaches, total
         except Exception as e:
             current_app.logger.error(f"Redis error: {str(e)}")
-            # SQL fallback
-            return Team_Coach.query.filter_by(team_id=team_id).all()
 
-    def get_coach_teams(self, coach_id):
-        """Get all team_coach records for a specific coach"""
+    def get_coaches_team(self, team_id, sort_order="desc", page=1, per_page=5):
+        """Get team_coach records for a specific team with pagination and sorting"""
         try:
-            coach_teams_key = f"coach:{coach_id}:team_coaches"
-            team_coach_ids = self.redis_service.get(coach_teams_key)
+            # Use sorted set key
+            sorted_key = f"team:{team_id}:team_coaches_sorted"
+            total = self.redis_service.get_sorted_set_length(sorted_key)
 
-            if team_coach_ids is None:
+            if not total:
+                # Load data if not present in Redis
                 self._sync_team_coaches()
-                team_coach_ids = self.redis_service.get(coach_teams_key) or []
+                total = self.redis_service.get_sorted_set_length(sorted_key)
+                if not total:
+                    return [], 0
 
+            # Handle case where per_page might be None
+            if per_page is None:
+                per_page = 5  # Default value if None
+
+            # Calculate pagination indices
+            start = (page - 1) * per_page
+            end = start + per_page - 1
+
+            # Get IDs from sorted set
+            is_desc = sort_order.lower() == "desc"
+            tc_ids = self.redis_service.get_from_sorted_set(
+                sorted_key, start, end, desc=is_desc
+            )
+
+            # Get team_coach data
             team_coaches = []
-            for tc_id in team_coach_ids:
-                tc_data = self.redis_service.get(f"team_coach:{tc_id}")
+            for tc_id in tc_ids:
+                tc_data = self.redis_service.get(f"team_coach:{int(tc_id)}")
                 if tc_data:
-                    team_coaches.append(self._deserialize_model(tc_data))
+                    team_coaches.append(tc_data)
 
-            return team_coaches
+            return team_coaches, total
         except Exception as e:
             current_app.logger.error(f"Redis error: {str(e)}")
-            return Team_Coach.query.filter_by(coach_id=coach_id).all()
+            # Return empty results rather than implicit None
+            return [], 0
 
     def get_coaches_by_season(self, season_id):
         """Get all team_coach records for a specific season"""
@@ -130,7 +157,7 @@ class CoachRepository(BaseRepository):
             return team_coaches
         except Exception as e:
             current_app.logger.error(f"Redis error: {str(e)}")
-            return Team_Coach.query.filter_by(season_id=season_id).all()
+            return []
 
     def _sync_team_coaches(self):
         """Sync all team_coach relationships to Redis"""

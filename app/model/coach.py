@@ -7,3 +7,9 @@ class Coach(db.Model):
     nationality = db.Column(db.String(100), nullable=False)
     date_of_birth = db.Column(db.Date, nullable=False)
     experience_years = db.Column(db.Integer, nullable=False)
+
+
+    def to_dict(self):
+        return {
+            c.name: getattr(self, c.name) for c in self.__table__.columns
+        }

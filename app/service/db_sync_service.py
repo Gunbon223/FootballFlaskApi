@@ -23,10 +23,9 @@ class DBSyncService:
             self.redis_service.set(f"{redis_prefix}:count", len(all_ids))
 
             for record in records:
-                # Generate Redis key
+                # Model:id
                 redis_key = f"{redis_prefix}:{record.id}"
-
-                # Serialize and store record
+                # Serialize datetime and date fields
                 data = {}
                 for c in record.__table__.columns:
                     value = getattr(record, c.name)
@@ -34,60 +33,57 @@ class DBSyncService:
                         value = value.isoformat()
                     data[c.name] = value
 
-                # Store in Redis
                 if self.redis_service.set(redis_key, data):
                     count += 1
 
                 if model_class.__name__ == "Season" and hasattr(record, "tournament_id"):
-                    # Sorted set by time
+                    # Tournament:id:seasons_sorted
                     sorted_key = f"tournament:{record.tournament_id}:seasons_sorted"
-                    if hasattr(record, "end_date") and record.end_date:
-                        # Use timestamp as score (negative for descending order)
-                        score = time.mktime(record.end_date.timetuple()) if isinstance(record.end_date, (date, datetime)) else 0
-                        self.redis_service.add_to_sorted_set(sorted_key, record.id, score)
-                # For Team Coach
+                    if hasattr(record, "start_date") and record.start_date:
+                        score = time.mktime(record.start_date.timetuple()) if isinstance(record.start_date,
+                                                                                         (date, datetime)) else 0
+                        # Store full key name instead of just ID
+                        full_key = f"season:{record.id}"
+                        self.redis_service.add_to_sorted_set(sorted_key, full_key, score)
+                # Team Coach
                 elif model_class.__name__ == "Team_Coach":
+                    # Team:id:team_coaches_sorted
+                    team_coaches_key = f"team:{record.team_id}:team_coaches_sorted"
+                    if hasattr(record, "start_date") and record.start_date:
+                        if isinstance(record.start_date, str):
+                            start_date = datetime.fromisoformat(record.start_date)
+                        else:
+                            start_date = record.start_date
+                        score = time.mktime(start_date.timetuple())
 
-                    # Handle Team_Coach relationships (3-way relationship)
-                    # Team to Team_Coach relationship
-                    team_coaches_key = f"team:{record.team_id}:team_coaches"
-                    team_coaches = self.redis_service.get(team_coaches_key) or []
-                    if record.id not in team_coaches:
-                        team_coaches.append(record.id)
-                        self.redis_service.set(team_coaches_key, team_coaches)
+                    # Store full key name instead of just ID
+                    full_key = f"team_coach:{record.id}"
+                    self.redis_service.add_to_sorted_set(team_coaches_key, full_key, score)
 
-                    # Coach to Team_Coach relationship
-                    coach_teams_key = f"coach:{record.coach_id}:team_coaches"
-                    coach_teams = self.redis_service.get(coach_teams_key) or []
-                    if record.id not in coach_teams:
-                        coach_teams.append(record.id)
-                        self.redis_service.set(coach_teams_key, coach_teams)
+                    # Coach:id:team_coaches_sorted
+                    coach_teams_key = f"coach:{record.coach_id}:team_coaches_sorted"
+                    self.redis_service.add_to_sorted_set(coach_teams_key, full_key, score)
 
-                    # Season to Team_Coach relationship
-                    season_teams_key = f"season:{record.season_id}:team_coaches"
-                    season_teams = self.redis_service.get(season_teams_key) or []
-                    if record.id not in season_teams:
-                        season_teams.append(record.id)
-                        self.redis_service.set(season_teams_key, season_teams)
+                    # Season:id:team_coaches_sorted
+                    season_teams_key = f"season:{record.season_id}:team_coaches_sorted"
+                    self.redis_service.add_to_sorted_set(season_teams_key, full_key, score)
 
+                # For Player Team Season
+                elif model_class.__name__ == "Team_Season_Ranking":
+                    # Team:id:rankings
+                    team_rankings_key = f"team:{record.team_id}:rankings"
+                    team_rankings = self.redis_service.get(team_rankings_key) or []
 
-                    # For Player Team Season
-                    elif model_class.__name__ == "Team_Season_Ranking":
-                        # Team to Team_Season_Ranking relationship
-                        team_rankings_key = f"team:{record.team_id}:rankings"
-                        team_rankings = self.redis_service.get(team_rankings_key) or []
-                        if record.id not in team_rankings:
-                            team_rankings.append(record.id)
-                            self.redis_service.set(team_rankings_key, team_rankings)
+                    # Store full key name instead of just ID
+                    full_key = f"team_season_ranking:{record.id}"
+                    if full_key not in team_rankings:
+                        team_rankings.append(full_key)
+                        self.redis_service.set(team_rankings_key, team_rankings)
 
-                        # Season to Team_Season_Ranking relationship
-                        season_rankings_key = f"season:{record.season_id}:rankings"
-                        season_rankings = self.redis_service.get(season_rankings_key) or []
-                        if record.id not in season_rankings:
-                            season_rankings.append(record.id)
-                            self.redis_service.set(season_rankings_key, season_rankings)
-
-
+                    # Season:id:rankings_sorted
+                    season_rankings_key = f"season:{record.season_id}:rankings_sorted"
+                    score = record.ranking  # Get ranking directly from record
+                    self.redis_service.add_to_sorted_set(season_rankings_key, full_key, score)
 
             current_app.logger.info(f"Synced {count} {model_class.__name__} records to Redis")
             return count

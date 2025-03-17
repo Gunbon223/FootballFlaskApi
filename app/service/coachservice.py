@@ -39,16 +39,17 @@ class Coachsevice:
     def delete_coach(self, coach_id):
         return self.coach_repository.delete(coach_id)
 
-    def get_coach_teams(self, coach_id):
-        return self.coach_repository.get_coach_teams(coach_id)
+    def get_coach_teams(self, coach_id, sort_order="desc", page=1, per_page=5):
+        return self.coach_repository.get_coach_teams(coach_id, sort_order, page, per_page)
 
     def get_coach_seasons(self, coach_id):
         return self.coach_repository.get_coaches_by_season(coach_id)
 
-    def get_coaches_team(self, team_id):
-        return self.coach_repository.get_coaches_team(team_id)
+    def get_coaches_team(self, team_id, sort_order="asc",page=1, per_page=None):
+        return self.coach_repository.get_coaches_team(team_id, sort_order, page, per_page)
 
     def assign_coach_to_team(self, team_id, coach_id):
         return self.coach_repository.assign_coach_to_team(team_id, coach_id)
+
 
 
