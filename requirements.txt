@@ -1,0 +1,6 @@
+flask==2.3.2
+flask-sqlalchemy==2.5.1
+sqlalchemy==1.4.23
+pymysql==1.1.1
+werkzeug==3.0.6
+faker==9.0.2

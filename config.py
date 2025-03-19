@@ -17,12 +17,15 @@ from app.route.coach_route import coach_route_bp
 from app.route.team_ranking_route import team_ranking_route_bp
 
 
-def create_app():
-    app = Flask(__name__)
-    params = urllib.parse.quote_plus(
-        'DRIVER={ODBC Driver 17 for SQL Server};SERVER=GBLAP;DATABASE=footballmng;UID=sa;PWD=123;')
-    app.config['SQLALCHEMY_DATABASE_URI'] = "mssql+pyodbc:///?odbc_connect=%s" % params
-
+def create_app(import_name=__name__):
+    app = Flask(import_name)
+    # params = urllib.parse.quote_plus(
+    #     'DRIVER={ODBC Driver 17 for SQL Server};SERVER=GBLAP;DATABASE=footballmng;UID=sa;PWD=123;')
+    # app.config['SQLALCHEMY_DATABASE_URI'] = "mssql+pyodbc:///?odbc_connect=%s" % params
+    
+    #  MySQL
+    app.config[
+        'SQLALCHEMY_DATABASE_URI'] = "mysql+pymysql://root@localhost:3306/footballmng?charset=utf8mb4"
     db.init_app(app)
 
 
