@@ -22,7 +22,7 @@ def create_app(import_name=__name__):
     # params = urllib.parse.quote_plus(
     #     'DRIVER={ODBC Driver 17 for SQL Server};SERVER=GBLAP;DATABASE=footballmng;UID=sa;PWD=123;')
     # app.config['SQLALCHEMY_DATABASE_URI'] = "mssql+pyodbc:///?odbc_connect=%s" % params
-    
+
     #  MySQL
     app.config[
         'SQLALCHEMY_DATABASE_URI'] = "mysql+pymysql://root@localhost:3306/footballmng?charset=utf8mb4"
