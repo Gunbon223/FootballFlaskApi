@@ -134,3 +134,20 @@ class RedisService:
         except redis.RedisError as e:
             current_app.logger.error(f"Redis sorted set length error: {str(e)}")
             return 0
+
+    def hset(self, key, field, value):
+        """Set a field in a Redis hash"""
+        if not self.is_connected():
+            return False
+        try:
+            # Convert value to string if needed
+            if isinstance(value, (bool, int, float)):
+                value = str(value)
+            elif value is None:
+                value = ""
+
+            self._redis_client.hset(key, field, value)
+            return True
+        except redis.RedisError as e:
+            current_app.logger.error(f"Redis hset error: {str(e)}")
+            return False

@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from app.service.tournamentservice import Tournament_service
+from app.service.tournament_service import Tournament_service
 from app.utils.response import create_response
 
 tournament_route_bp = Blueprint('tournament', __name__)

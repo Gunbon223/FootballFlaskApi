@@ -14,6 +14,7 @@ from app.route.team_route import team_route_bp
 from app.route.season_route import season_route_bp
 from app.route.tournament_route import tournament_route_bp
 from app.route.coach_route import coach_route_bp
+from app.route.team_ranking_route import team_ranking_route_bp
 
 
 def create_app():
@@ -36,7 +37,6 @@ def create_app():
     app.logger.setLevel(logging.INFO)
 
 
-    # Initialize Redis connection
     with app.app_context():
         redis_service = RedisService.get_instance()
         redis_service.connect()
@@ -46,6 +46,7 @@ def create_app():
     app.register_blueprint(season_route_bp)
     app.register_blueprint(tournament_route_bp)
     app.register_blueprint(coach_route_bp)
+    app.register_blueprint(team_ranking_route_bp)
     register_commands(app)
 
     return app

@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from app.service.coachservice import Coachsevice
+from app.service.coach_service import Coachsevice
 from app.utils.response import create_response
 
 coach_route_bp = Blueprint('coach', __name__)

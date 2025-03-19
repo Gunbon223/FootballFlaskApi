@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from app.service.teamservice import TeamService
+from app.service.team_service import TeamService
 from app.utils.response import create_response
 
 team_route_bp = Blueprint('team', __name__)
@@ -70,8 +70,3 @@ def delete_team(team_id):
     return create_response(message="Error deleting team", status=400)
 
 
-@team_route_bp.route('/teams/<int:team_id>/ranking', methods=['GET'])
-def get_team_ranking(team_id):
-    season_id = request.args.get('season_id')
-    ranking = team_service.get_team_ranking(team_id, season_id)
-    return create_response(ranking, "Team ranking found", 200, True)

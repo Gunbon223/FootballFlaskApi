@@ -1,14 +1,12 @@
 from flask import current_app
 from app.repository.team_repository import TeamRepository
 # from app.repository. import TeamCoachRepository
-from app.repository.team_ss_ranking_repository import TeamSeasonRankingRepository
 from app.model.team import Team
 
 class TeamService:
     def __init__(self):
         self.team_repository = TeamRepository()
         # self.team_coach_repository = TeamCoachRepository()
-        self.team_ss_ranking_repository = TeamSeasonRankingRepository()
 
     def get_all_teams_paginated(self, page=1, per_page=10, order_by='id', sort_order="asc"):
 
@@ -53,9 +51,7 @@ class TeamService:
             current_app.logger.error(f"Error deleting team: {str(e)}")
             return False
 
-    def get_team_ranking(self, team_id):
-        """Get a team's ranking"""
-        return self.team_ss_ranking_repository.get_leaderboard(team_id)
+
 
 
 

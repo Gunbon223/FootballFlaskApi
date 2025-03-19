@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from app.service.seasonservice import SeasonService
+from app.service.season_service import SeasonService
 from app.utils.response import create_response
 
 season_route_bp = Blueprint('season', __name__)
