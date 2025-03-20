@@ -2,6 +2,7 @@ import logging
 
 from flask import Flask
 
+from app.route.player_route import player_route_bp
 from app.utils.commands import register_commands
 from appdb import db
 import urllib
@@ -50,6 +51,7 @@ def create_app(import_name=__name__):
     app.register_blueprint(tournament_route_bp)
     app.register_blueprint(coach_route_bp)
     app.register_blueprint(team_ranking_route_bp)
+    app.register_blueprint(player_route_bp)
     register_commands(app)
 
     return app

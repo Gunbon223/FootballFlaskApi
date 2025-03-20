@@ -8,40 +8,47 @@ class TeamSeasonRankingRepository(BaseRepository):
     def  __init__(self):
         super().__init__(Team_Season_Ranking, "team_season_ranking")
 
-    def get_leaderboard(self, season_id,sort_order):
+    def get_leaderboard(self, season_id, sort_order="desc", page=1, per_page=5, total_leader=False):
         """Get full leaderboard for a season from Redis"""
         try:
             self.update_leaderboard_sorted_list(season_id)
+
             sorted_key = f"season:{season_id}:rankings_sorted"
+            total = self.redis_service.get_sorted_set_length(sorted_key)
 
-            # Get all team ranking keys from the sorted set
+            if total == 0:
+                return [], 0
+
+            if total_leader == False:
+                print(total_leader)
+                start = (page - 1) * per_page
+                end = start + per_page - 1
+            if total_leader == True:
+                print(total_leader)
+                start = 0
+                end = -1
+
             if sort_order == "asc":
-                ranking_keys = self.redis_service.get_from_sorted_set(sorted_key, 0, -1, False)
+                ranking_keys = self.redis_service.get_from_sorted_set(sorted_key, start, end, False)
             else:
-                ranking_keys = self.redis_service.get_from_sorted_set(sorted_key, 0, -1, True)
-            print(ranking_keys)
-            # If the sorted list doesn't exist yet, create it
+                ranking_keys = self.redis_service.get_from_sorted_set(sorted_key, start, end, True)
 
-
-            # Get full data for each ranking
             leaderboard = []
             for key in ranking_keys:
                 ranking_data = self.redis_service.get(key)
                 if ranking_data:
-                    # Get team data to enhance the ranking information
                     team_key = f"team:{ranking_data.get('team_id')}"
                     team_data = self.redis_service.get(team_key) or {}
 
-                    # Combine ranking and team data
                     entry = ranking_data.copy()
                     entry['team_name'] = team_data.get('name', 'Unknown')
                     leaderboard.append(entry)
 
-            return leaderboard
+            return leaderboard, total
 
         except Exception as e:
             current_app.logger.error(f"Redis error: {str(e)}")
-            return []
+            return [], 0
 
     def get_team_rankings(self, team_id):
         """Get all rankings for a specific team"""

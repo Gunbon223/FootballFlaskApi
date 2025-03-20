@@ -10,7 +10,7 @@ class Player(db.Model):
     date_of_birth = db.Column(db.Date, nullable=False)
 
 
-class player_team_season(db.Model):
+class PlayerTeamSeason(db.Model):
     __tablename__ = 'player_team_season'
     id = db.Column(db.Integer, primary_key=True)
     player_id = db.Column(db.Integer, db.ForeignKey('player.id'), nullable=False)

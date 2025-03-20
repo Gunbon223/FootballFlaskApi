@@ -118,9 +118,18 @@ class RedisService:
             return []
         try:
             if desc:
-                return self._redis_client.zrevrange(key, start, end)
+                values = self._redis_client.zrevrange(key, start, end)
             else:
-                return self._redis_client.zrange(key, start, end)
+                values = self._redis_client.zrange(key, start, end)
+
+            decoded_values = []
+            for value in values:
+                if isinstance(value, bytes):
+                    decoded_values.append(value.decode('utf-8'))
+                else:
+                    decoded_values.append(value)
+
+            return decoded_values
         except redis.RedisError as e:
             current_app.logger.error(f"Redis sorted set get error: {str(e)}")
             return []

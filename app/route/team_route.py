@@ -27,7 +27,7 @@ def get_all_teams():
         'total': total,
         'page': page,
         'per_page': per_page,
-        'pages': (total + per_page - 1) // per_page,  # Ceiling division
+        'pages': (total + per_page - 1) // per_page,
         'order_by': order_by,
         'sort_order': sort_order
     }
@@ -68,5 +68,7 @@ def delete_team(team_id):
     if success:
         return create_response(message="Team deleted")
     return create_response(message="Error deleting team", status=400)
+
+@team_route_bp.route('/teams/', methods=['GET'])
 
 

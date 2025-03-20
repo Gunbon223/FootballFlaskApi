@@ -15,14 +15,26 @@ def get_team_ranking(team_id):
 
 @team_ranking_route_bp.route('/season/<int:season_id>/leaderboard', methods=['GET'])
 def get_season_ranking(season_id):
-
     sort_order = request.args.get('sort_order', 'asc')
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 5, type=int)
+    total_leader = 'total_leader' in request.args
 
     if sort_order not in ['asc', 'desc']:
         return create_response(None, "Invalid sort_order. Must be 'asc' or 'desc'", 400, False)
-    season_ranking = team_ranking_service.get_leaderboard(season_id,sort_order)
-    if season_ranking:
-        return create_response(season_ranking, "Season leaderboard found", 200, True)
-    return create_response(None, "Season leaderboard not found", 404, False)
 
+    season_ranking, total = team_ranking_service.get_leaderboard(season_id, sort_order, page, per_page, total_leader)
+
+    if season_ranking:
+        pagination = {
+            'total': total,
+            'page': page,
+            'per_page': per_page,
+            'pages': (total + per_page - 1) // per_page,
+            'sort_order': sort_order
+
+        }
+        return create_response(season_ranking, "Season leaderboard found", 200, True, pagination=pagination)
+
+    return create_response(None, "Season leaderboard not found", 404, False)
 

@@ -45,22 +45,12 @@ class BaseRepository:
         if data:
             current_app.logger.debug(f"Retrieved from Redis: {redis_key}")
             return self._deserialize_model(data)
+        return None
 
-        # Fall back to SQL if Redis failed or data not found
-        if current_app.config.get('USE_SQL_FALLBACK', True):
-            try:
-                entity = self.model_class.query.get(id)
-                if entity:
-                    # Save to Redis for next time
-                    self.redis_service.set(
-                        redis_key,
-                        self._serialize_model(entity)
-                    )
-                return entity
-            except Exception as e:
-                current_app.logger.error(f"SQL error: {str(e)}")
-                return None
-
+    def get(self,redis_key):
+        data = self.redis_service.get(redis_key)
+        if data:
+            return self._deserialize_model(data)
         return None
 
     def save(self, entity):

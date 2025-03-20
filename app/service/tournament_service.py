@@ -42,7 +42,7 @@ class Tournament_service:
             current_app.logger.error(f"Error deleting tournament: {str(e)}")
             return False
 
-    def get_tournament_seasons(self, tournament_id, page=1, per_page=5, sort_order="desc"):
+    def get_tournament_seasons(self, tournament_id, page=1, per_page=5, sort_order="asc"):
         return self.tournament_repository.get_recent_seasons(
             tournament_id=tournament_id,
             sort_order=sort_order,

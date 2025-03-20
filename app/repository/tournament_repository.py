@@ -85,29 +85,27 @@ class TournamentRepository(BaseRepository):
 
         return seasons, total
 
-    def get_recent_seasons(self, tournament_id, sort_order="desc", page=1, per_page=5):
+    def get_recent_seasons(self, tournament_id,per_page, sort_order="asc", page=1 ):
         """Get most recent seasons for a tournament"""
         sorted_key = f"tournament:{tournament_id}:seasons_sorted"
         total = self.redis_service.get_sorted_set_length(sorted_key)
 
-        if not total:
-            self._load_tournament_seasons_to_redis(tournament_id)
-            total = self.redis_service.get_sorted_set_length(sorted_key)
-            if not total:
-                return [], 0
-
-        start = (page - 1) * per_page
-        end = start + per_page - 1
+        if per_page:
+            start = (page - 1) * per_page
+            end = start + per_page - 1
+        else:
+            start = 0
+            end = -1
 
         if sort_order == "desc":
             recent_ids = self.redis_service.get_from_sorted_set(sorted_key, start, end, desc=True)
         else:
             recent_ids = self.redis_service.get_from_sorted_set(sorted_key, start, end, desc=False)
 
-
         seasons = []
-        for season_id in recent_ids:
-            season_data = self.redis_service.get(f"season:{int(season_id)}")
+        for season_key in recent_ids:
+
+            season_data = self.redis_service.get(season_key)
             if season_data:
                 seasons.append(season_data)
 

@@ -1,18 +1,27 @@
 from flask import current_app
+
+from app.repository.player_repository import PlayerRepository
 from app.repository.season_repository import SeasonRepository
 from app.model.player import Player
 
 
-class Playerservice:
+class Player_service:
     def __init__(self):
         self.season_repository = SeasonRepository()
+        self.player_repository = PlayerRepository()
 
-    def get_all_players_paginated(self, page=1, per_page=10, order_by='id', sort_order="asc"):
-
-        return self.season_repository.get_all_seasons_paginated(page, per_page, order_by, sort_order)
 
     def get_player_by_id(self, player_id):
         return self.season_repository.get_by_id(player_id)
+
+    def get_player_by_team_season(self, team_id, season_id):
+        try:
+            return self.player_repository.get_players_by_team_season(team_id, season_id)
+        except Exception as e:
+            current_app.logger.error(f"Error getting players by team and season: {str(e)}")
+            return None
+
+
 
     def create_player(self, player_data):
         try:

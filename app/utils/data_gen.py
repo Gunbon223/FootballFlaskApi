@@ -6,7 +6,7 @@ from app.model.tournament import Tournament
 from app.model.season import Season
 from app.model.team import Team, Team_Coach
 from app.model.coach import Coach
-from app.model.player import Player, player_team_season
+from app.model.player import Player, PlayerTeamSeason
 from app.model.match import Match
 from app.model.lineup import Lineup
 from app.model.goal import Goal
@@ -137,7 +137,7 @@ def create_player_season_teams():
         for team in teams:
             selected_players = set(fake.random_elements(elements=players, length=25, unique=True))
             for player in selected_players:
-                player_team_season_r = player_team_season(
+                player_team_season_r = PlayerTeamSeason(
                     player_id=player.id,
                     season_id=season.id,
                     team_id=team.id,
@@ -289,12 +289,12 @@ def create_lineups():
     matches = Match.query.all()
     for match in matches:
         # Retrieve home team's players for this season
-        home_players = player_team_season.query.filter_by(
+        home_players = PlayerTeamSeason.query.filter_by(
             season_id=match.season_id,
             team_id=match.home_team_id
         ).all()
         # Retrieve away team's players for this season
-        away_players = player_team_season.query.filter_by(
+        away_players = PlayerTeamSeason.query.filter_by(
             season_id=match.season_id,
             team_id=match.away_team_id
         ).all()
@@ -553,7 +553,7 @@ def update_team_season_rankings():
 
 def update_player_season_teams():
     # Get all player seasons and create a lookup dictionary
-    player_seasons = player_team_season.query.all()
+    player_seasons = PlayerTeamSeason.query.all()
     player_season_lookup = {}
     for ps in player_seasons:
         key = (ps.player_id, ps.season_id, ps.team_id)

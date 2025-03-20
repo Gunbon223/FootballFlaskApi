@@ -7,7 +7,7 @@ from app.model.lineup import Lineup
 from app.model.team_season_ranking import Team_Season_Ranking
 from app.service.db_sync_service import DBSyncService
 from app.model.team import Team, Team_Coach
-from app.model.player import Player,player_team_season
+from app.model.player import Player,PlayerTeamSeason
 from app.model.match import Match
 from app.model.tournament import Tournament
 from app.model.round import Round
@@ -35,7 +35,7 @@ def sync_to_redis_command():
         (Team_Season_Ranking, 'team_season_ranking'),
         (Transfer_History, 'transfer_history'),
         (Team_Coach, 'team_coach'),
-        (player_team_season, 'player_team_season')
+        (PlayerTeamSeason, 'player_team_season'),
 
     ]
 

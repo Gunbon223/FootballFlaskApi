@@ -77,7 +77,7 @@ def delete_tournament(tournament_id):
 def get_tournament_seasons(tournament_id):
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
-    sort_order = request.args.get('sort_order', 'asc')
+    sort_order = request.args.get('sort_order', 'desc')
     seasons, total = tournament_service.get_tournament_seasons(tournament_id, page, per_page, sort_order)
     pagination = {
         'total': total,

@@ -14,15 +14,14 @@ class DBSyncService:
             "Season": self._handle_season,
             "Team_Coach": self._handle_team_coach,
             "Team_Season_Ranking": self._handle_team_season_ranking,
-            "Player_Team": self._handle_player_team,
+            "PlayerTeamSeason": self._handle_player_team,
             "Match": self._handle_match,
-            "Lineup": self._handle_lineup,  # Changed from Match_Player to Lineup
+            "Lineup": self._handle_lineup,
             "Goal": self._handle_goal,
             "Card": self._handle_card,
             "Substitution": self._handle_substitution,
             "Transfer": self._handle_transfer,
             "Round": self._handle_round
-
         }
 
     def sync_model(self, model_class, redis_prefix):
@@ -202,15 +201,39 @@ class DBSyncService:
             self.redis_service.set(season_team_key, season_teams)
 
     def _handle_player_team(self, record, redis_prefix):
-        """Handle Player_Team special relationships"""
-        # Team:{team.id}:{season:id}:players
-        team_players_key = f"team:{record.team_id}:{record.season_id}:players"
-        player_key = f"player:{record.player_id}"
+        """Handle player_team_season association table relationships"""
+        try:
+            # Validate required fields exist
+            if not hasattr(record, 'team_id') or not hasattr(record, 'season_id') or not hasattr(record, 'player_id'):
+                current_app.logger.error(f"Invalid player_team_season record: missing required fields")
+                return
 
-        team_players = self.redis_service.get(team_players_key) or []
-        if player_key not in team_players:
-            team_players.append(player_key)
-            self.redis_service.set(team_players_key, team_players)
+            # Team players key using consistent format
+            team_season_players_key = f"team:{record.team_id}:season:{record.season_id}:players"
+            player_key = f"player:{record.player_id}"
+
+            # Add player to team's season roster
+            team_players = self.redis_service.get(team_season_players_key) or []
+            if isinstance(team_players, str):
+                team_players = [team_players]
+
+            if player_key not in team_players:
+                team_players.append(player_key)
+                self.redis_service.set(team_season_players_key, team_players)
+
+            # Also track in player's team history
+            player_teams_key = f"player:{record.player_id}:teams"
+            team_key = f"team:{record.team_id}"
+            player_teams = self.redis_service.get(player_teams_key) or []
+            if isinstance(player_teams, str):
+                player_teams = [player_teams]
+
+            if team_key not in player_teams:
+                player_teams.append(team_key)
+                self.redis_service.set(player_teams_key, player_teams)
+
+        except Exception as e:
+            current_app.logger.error(f"Error handling player_team_season record: {str(e)}")
 
     def _handle_match(self, record, redis_prefix):
         """Handle Match special relationships"""
