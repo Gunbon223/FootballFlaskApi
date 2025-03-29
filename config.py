@@ -2,6 +2,9 @@ import logging
 
 from flask import Flask
 
+from app.route.goal_route import goal_route_bp
+from app.route.lineup_route import lineup_route_bp
+from app.route.match_route import match_route_bp
 from app.route.player_route import player_route_bp
 from app.utils.commands import register_commands
 from appdb import db
@@ -52,6 +55,9 @@ def create_app(import_name=__name__):
     app.register_blueprint(coach_route_bp)
     app.register_blueprint(team_ranking_route_bp)
     app.register_blueprint(player_route_bp)
+    app.register_blueprint(match_route_bp)
+    app.register_blueprint(lineup_route_bp)
+    app.register_blueprint(goal_route_bp)
     register_commands(app)
 
     return app

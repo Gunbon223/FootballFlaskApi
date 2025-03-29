@@ -4,6 +4,7 @@ from appdb import db
 import time
 import json
 from datetime import date, datetime
+from app.model.match import Match
 
 
 class DBSyncService:
@@ -90,38 +91,17 @@ class DBSyncService:
         season_rounds_key = f"season:{record.season_id}:all_rounds"
         self.redis_service.add_to_sorted_set(season_rounds_key, full_key, record.round_number)
 
-        # Track if round is finished
-        if record.is_finished:
-            finished_rounds_key = f"season:{record.season_id}:finished_rounds"
-            finished_rounds = self.redis_service.get(finished_rounds_key) or []
-
-            if isinstance(finished_rounds, str):
-                finished_rounds = [finished_rounds]
-
-            if full_key not in finished_rounds:
-                finished_rounds.append(full_key)
-                self.redis_service.set(finished_rounds_key, finished_rounds)
-
-        # Get matches for this round if they exist
-        from app.model.match import Match
         try:
-            # Match using round_id which is the foreign key in the Match model
             matches = Match.query.filter(
                 Match.season_id == record.season_id,
                 Match.round_id == record.id
             ).all()
 
-            # Create list of match keys
-            match_keys = [f"match:{match.id}" for match in matches]
-
-            # Store list of match keys for this round
-            round_matches_key = f"round:{record.id}:matches"
-            self.redis_service.set(round_matches_key, match_keys)
-
-            # Also store reference in alternative format
-            round_number_matches_key = f"season:{record.season_id}:round:{record.round_number}:matches"
-            self.redis_service.set(round_number_matches_key, match_keys)
-
+            for match in matches:
+                match_keys = f"match:{match.id}"
+                round_number_matches_key = f"season:{record.season_id}:round:{record.round_number}:matches"
+                self.redis_service.add_to_sorted_set(round_number_matches_key, match_keys,
+                                                     time.mktime(record.round_date.timetuple()))
         except Exception as e:
             current_app.logger.error(f"Error handling round matches for round {record.id}: {str(e)}")
 
@@ -309,13 +289,16 @@ class DBSyncService:
         player_key = f"player:{record.player_id}"
 
         # Use minute as score for sorting
-        score = record.minute if hasattr(record, "minute") else 0
+        score = record.goal_time if hasattr(record, "goal_time") else 0
         self.redis_service.add_to_sorted_set(match_goals_key, player_key, score)
 
-        # Update player goal statistics
-        if hasattr(record, "season_id"):
+        # Get match data to find season_id
+        match_data = self.redis_service.get(f"match:{record.match_id}")
+        if match_data and "season_id" in match_data:
+            season_id = match_data["season_id"]
+
             # Update season goals
-            player_season_goals_key = f"player:{record.player_id}:season:{record.season_id}:goals"
+            player_season_goals_key = f"player:{record.player_id}:season:{season_id}:goals"
             goals_count = self.redis_service.get(player_season_goals_key) or 0
             self.redis_service.set(player_season_goals_key, goals_count + 1)
 
@@ -325,9 +308,8 @@ class DBSyncService:
             self.redis_service.set(player_career_goals_key, career_goals + 1)
 
             # Update season top scorers
-            season_scorers_key = f"season:{record.season_id}:top_scorers"
+            season_scorers_key = f"season:{season_id}:top_scorers"
             self.redis_service.add_to_sorted_set(season_scorers_key, player_key, goals_count + 1)
-
 
 
     def _handle_card(self, record, redis_prefix):

@@ -160,3 +160,35 @@ class RedisService:
         except redis.RedisError as e:
             current_app.logger.error(f"Redis hset error: {str(e)}")
             return False
+
+
+    def hget(self, key, field):
+        """Get a field from a Redis hash"""
+        if not self.is_connected():
+            return None
+        try:
+            return self._redis_client.hget(key, field)
+        except redis.RedisError as e:
+            current_app.logger.error(f"Redis hget error: {str(e)}")
+            return None
+
+    def get_all_sorted_set_with_scores(self, key):
+        """Get all members and scores from a sorted set"""
+        if not self.is_connected():
+            return []
+        try:
+            # Get all members with their scores
+            result = self._redis_client.zrange(key, 0, -1, withscores=True)
+
+            # Convert bytes to strings if needed
+            decoded_result = []
+            for member, score in result:
+                if isinstance(member, bytes):
+                    member = member.decode('utf-8')
+                decoded_result.append((member, score))
+
+            return decoded_result
+        except redis.RedisError as e:
+            current_app.logger.error(f"Redis get sorted set with scores error: {str(e)}")
+            return []
+

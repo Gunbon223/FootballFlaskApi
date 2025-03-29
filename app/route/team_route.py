@@ -69,6 +69,6 @@ def delete_team(team_id):
         return create_response(message="Team deleted")
     return create_response(message="Error deleting team", status=400)
 
-@team_route_bp.route('/teams/', methods=['GET'])
+# @team_route_bp.route('/teams/', methods=['GET'])
 
 

@@ -20,11 +20,9 @@ class TeamSeasonRankingRepository(BaseRepository):
                 return [], 0
 
             if total_leader == False:
-                print(total_leader)
                 start = (page - 1) * per_page
                 end = start + per_page - 1
             if total_leader == True:
-                print(total_leader)
                 start = 0
                 end = -1
 

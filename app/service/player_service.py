@@ -53,3 +53,17 @@ class Player_service:
         except Exception as e:
             current_app.logger.error(f"Error deleting player: {str(e)}")
             return False
+
+    def change_player_team_season(self, player_id, team_id, season_id):
+        try:
+            player = self.season_repository.get_by_id(player_id)
+            if not player:
+                return None
+
+            player.team_id = team_id
+            player.season_id = season_id
+
+            return self.season_repository.update(player)
+        except Exception as e:
+            current_app.logger.error(f"Error changing player team and season: {str(e)}")
+            return None

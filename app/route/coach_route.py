@@ -102,3 +102,5 @@ def assign_coach_to_team(coach_id, team_id):
 def get_coaches_seasons(coach_id):
     seasons = coach_service.get_coach_seasons(coach_id)
     return create_response(seasons, "Seasons found", 200, True)
+
+
