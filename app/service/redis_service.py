@@ -110,6 +110,17 @@ class RedisService:
             return True
         except redis.RedisError as e:
             current_app.logger.error(f"Redis sorted set error: {str(e)}")
+            return
+
+    def remove_from_sorted_set(self, key, value):
+        """Remove a value from a sorted set"""
+        if not self.is_connected():
+            return False
+        try:
+            self._redis_client.zrem(key, str(value))
+            return True
+        except redis.RedisError as e:
+            current_app.logger.error(f"Redis remove from sorted set error: {str(e)}")
             return False
 
     def get_from_sorted_set(self, key, start=0, end=-1, desc=True):

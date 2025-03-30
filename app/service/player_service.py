@@ -21,8 +21,6 @@ class Player_service:
             current_app.logger.error(f"Error getting players by team and season: {str(e)}")
             return None
 
-
-
     def create_player(self, player_data):
         try:
             new_player = Player(**player_data)
@@ -54,16 +52,8 @@ class Player_service:
             current_app.logger.error(f"Error deleting player: {str(e)}")
             return False
 
-    def change_player_team_season(self, player_id, team_id, season_id):
+    def change_player_team_season(self, player_id, old_team_id, new_team_id, season_id):
         try:
-            player = self.season_repository.get_by_id(player_id)
-            if not player:
-                return None
-
-            player.team_id = team_id
-            player.season_id = season_id
-
-            return self.season_repository.update(player)
+            return self.player_repository.change_player_team_season(player_id, old_team_id, new_team_id, season_id)
         except Exception as e:
-            current_app.logger.error(f"Error changing player team and season: {str(e)}")
-            return None
+            current_app.logger.error(f"Error changing player team: {str(e)}")
